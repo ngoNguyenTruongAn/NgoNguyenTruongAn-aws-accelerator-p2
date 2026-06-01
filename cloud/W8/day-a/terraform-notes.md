@@ -1215,11 +1215,11 @@ Nếu aws_security_group.app_sg thay đổi, Terraform sẽ replace aws_instance
 [main.tf](./mini-lab/main.tf)
 [variables.tf](./mini-lab/variables.tf)
 [output.tf](./mini-lab/outputs.tf)
-
+[tfvars](./mini-lab/terraform.tfvars)
 **Evidence sau khi test bằng lệnh và chạy thử -- chưa apply nếu mn muốn tạo thật thử thì sử dụng lệnh apply nha"
 ![mini-lap1](./evidence/screenshots/mini-lap1.jpg)
 ![mini-lap2](./evidence/screenshots/mini-lap2.jpg)
-![mini-lap3](./evidence/screenshots/mini-lap3.jpg)
+
 
 
 
