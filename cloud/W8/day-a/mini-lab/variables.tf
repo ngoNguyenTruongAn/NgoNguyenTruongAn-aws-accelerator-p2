@@ -1,14 +1,35 @@
 variable "aws_region" {
-  description = "AWS region for Terraform resources"
+  description = "AWS region used for this Terraform lab"
   type        = string
 }
 
-variable "bucket_name" {
-  description = "Name of the demo S3 bucket"
+variable "project_name" {
+  description = "Project name used for naming and tagging resources"
   type        = string
 }
 
 variable "environment" {
-  description = "Environment name"
+  description = "Environment name, for example dev, staging, prod"
   type        = string
+}
+
+variable "owner" {
+  description = "Owner name for resource tagging"
+  type        = string
+}
+
+variable "app_bucket_suffix" {
+  description = "Unique suffix for the app S3 bucket"
+  type        = string
+}
+
+variable "logs_bucket_suffix" {
+  description = "Unique suffix for the logs S3 bucket"
+  type        = string
+}
+
+variable "secret_demo_value" {
+  description = "Demo secret value to prove sensitive variable usage"
+  type        = string
+  sensitive   = true
 }

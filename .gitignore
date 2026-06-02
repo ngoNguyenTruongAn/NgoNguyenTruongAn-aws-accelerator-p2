@@ -2,10 +2,10 @@
 **/.terraform/
 *.tfstate
 *.tfstate.*
-crash.log
-crash.*.log
 *.tfvars
 *.tfvars.json
+crash.log
+crash.*.log
 
 # OS / editor
 .vscode/

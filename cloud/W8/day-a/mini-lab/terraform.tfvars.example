@@ -1,0 +1,8 @@
+aws_region         = "ap-southeast-1"
+project_name       = "aws-accelerator-p2"
+environment        = "dev"
+owner              = "ngo-nguyen-truong-an"
+app_bucket_suffix  = "app-20260601"
+logs_bucket_suffix = "logs-20260601"
+
+secret_demo_value = "CHANGE_ME_DO_NOT_COMMIT_REAL_SECRET"
