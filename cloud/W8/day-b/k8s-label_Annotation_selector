@@ -1,0 +1,903 @@
+# Kubernetes Notes — Labels and Selectors
+
+## 1. Label là gì?
+
+Label là cặp **key/value** được gắn vào Kubernetes object, ví dụ Pod, Deployment, Service, Node.
+
+Label dùng để mô tả các thuộc tính có ý nghĩa với người dùng, ví dụ:
+
+```txt
+app = nginx
+environment = production
+tier = frontend
+release = stable
+```
+
+Ví dụ trong manifest:
+
+```yaml
+metadata:
+  labels:
+    environment: production
+    app: nginx
+```
+
+Câu nhớ:
+
+```txt
+Label = key/value dùng để phân loại và tổ chức Kubernetes objects.
+```
+
+---
+
+## 2. Label dùng để làm gì?
+
+Labels dùng để:
+
+* Tổ chức object
+* Chọn một nhóm object
+* Lọc object bằng `kubectl`
+* Để Service tìm Pod backend
+* Để Deployment/ReplicaSet biết Pod nào thuộc nó
+* Hỗ trợ UI/CLI hiển thị và truy vấn object
+
+Ví dụ:
+
+```bash
+kubectl get pods -l app=web
+```
+
+Lệnh trên lấy các Pod có label:
+
+```txt
+app=web
+```
+
+Câu nhớ:
+
+```txt
+Labels giúp Kubernetes và người dùng chọn một tập object.
+```
+
+---
+
+## 3. Label có unique không?
+
+Không.
+
+Khác với `metadata.name` và `UID`, label **không dùng để định danh duy nhất**.
+
+Nhiều object có thể mang cùng một label.
+
+Ví dụ nhiều Pod đều có:
+
+```yaml
+labels:
+  app: nginx
+```
+
+Điều này là bình thường, vì label được thiết kế để gom nhóm object.
+
+Câu nhớ:
+
+```txt
+Name/UID dùng để định danh object.
+Label dùng để gom nhóm object.
+```
+
+---
+
+## 4. Một object có thể có nhiều label không?
+
+Có.
+
+Một object có thể có nhiều label khác nhau.
+
+Ví dụ:
+
+```yaml
+metadata:
+  labels:
+    app: guestbook
+    tier: frontend
+    environment: production
+    release: stable
+```
+
+Lưu ý:
+
+```txt
+Trong cùng một object, mỗi label key phải unique.
+```
+
+Ví dụ không nên có 2 key `app` trên cùng một object.
+
+---
+
+## 5. Ví dụ label thường dùng
+
+Một số label phổ biến:
+
+```yaml
+metadata:
+  labels:
+    app: guestbook
+    environment: production
+    tier: frontend
+    release: stable
+    track: daily
+```
+
+Ý nghĩa:
+
+```txt
+app           = tên ứng dụng
+environment   = môi trường dev / qa / production
+tier          = tầng frontend / backend / cache
+release       = stable / canary
+track         = daily / weekly
+```
+
+---
+
+## 6. Label syntax
+
+Label là key/value.
+
+Label key có thể có 2 phần:
+
+```txt
+prefix/name
+```
+
+Trong đó:
+
+```txt
+prefix = optional
+name   = bắt buộc
+```
+
+Ví dụ:
+
+```yaml
+labels:
+  app.kubernetes.io/name: guestbook
+```
+
+Ở đây:
+
+```txt
+prefix = app.kubernetes.io
+name   = name
+```
+
+Nếu không có prefix, label key được xem là private cho user.
+
+Ví dụ:
+
+```yaml
+labels:
+  app: web
+```
+
+---
+
+## 7. Quy tắc label key
+
+Phần `name` của label key:
+
+```txt
+Tối đa 63 ký tự
+Bắt đầu và kết thúc bằng chữ hoặc số
+Có thể chứa chữ, số, dấu '-', '_' hoặc '.'
+```
+
+Prefix nếu có:
+
+```txt
+Phải là DNS subdomain
+Tối đa 253 ký tự
+Kết thúc bằng dấu /
+```
+
+Các prefix sau được Kubernetes core reserved:
+
+```txt
+kubernetes.io/
+k8s.io/
+```
+
+Câu nhớ:
+
+```txt
+Label key = optional prefix + required name.
+```
+
+---
+
+## 8. Quy tắc label value
+
+Label value:
+
+```txt
+Tối đa 63 ký tự
+Có thể để trống
+Nếu không trống thì phải bắt đầu và kết thúc bằng chữ hoặc số
+Có thể chứa chữ, số, '-', '_' hoặc '.'
+```
+
+Ví dụ hợp lệ:
+
+```txt
+production
+frontend
+v1.0
+stable-release
+```
+
+---
+
+## 9. Annotation khác label thế nào?
+
+**Label** dùng để chọn/lọc object.
+
+**Annotation** dùng để lưu metadata bổ sung, thường không dùng để chọn object.
+
+Ví dụ label:
+
+```yaml
+metadata:
+  labels:
+    app: web
+    tier: frontend
+```
+
+Ví dụ annotation:
+
+```yaml
+metadata:
+  annotations:
+    description: "frontend service for demo app"
+    owner: "team-a"
+```
+
+Câu nhớ:
+
+```txt
+Labels dùng để select/filter.
+Annotations dùng để ghi chú/thông tin bổ sung.
+```
+
+---
+
+# Label Selectors
+
+## 10. Label selector là gì?
+
+Label selector là cách chọn một nhóm object dựa trên label.
+
+Ví dụ:
+
+```bash
+kubectl get pods -l app=web
+```
+
+Nghĩa là:
+
+```txt
+Lấy các Pod có label app=web.
+```
+
+Câu nhớ:
+
+```txt
+Selector = điều kiện dùng để chọn object theo label.
+```
+
+---
+
+## 11. Vì sao selector quan trọng?
+
+Selector là cơ chế gom nhóm cốt lõi trong Kubernetes.
+
+Nó được dùng bởi nhiều object:
+
+* Service dùng selector để tìm Pod backend
+* Deployment dùng selector để quản lý Pod
+* ReplicaSet dùng selector để biết Pod nào thuộc nó
+* kubectl dùng selector để lọc object khi truy vấn
+* Node selection có thể dùng label để chọn node
+
+Câu nhớ:
+
+```txt
+Selector là cầu nối giữa object quản lý và object được quản lý.
+```
+
+---
+
+## 12. Equality-based selector
+
+Equality-based selector lọc object bằng điều kiện bằng hoặc khác.
+
+Các toán tử:
+
+```txt
+=
+==
+!=
+```
+
+Ví dụ:
+
+```bash
+kubectl get pods -l environment=production
+```
+
+Lấy Pod có label:
+
+```txt
+environment=production
+```
+
+Ví dụ khác:
+
+```bash
+kubectl get pods -l tier!=frontend
+```
+
+Lấy Pod có `tier` khác `frontend`, hoặc Pod không có label `tier`.
+
+Có thể kết hợp nhiều điều kiện bằng dấu phẩy:
+
+```bash
+kubectl get pods -l environment=production,tier!=frontend
+```
+
+Dấu phẩy nghĩa là:
+
+```txt
+AND
+```
+
+Câu nhớ:
+
+```txt
+Equality selector dùng =, ==, != để lọc label.
+```
+
+---
+
+## 13. Set-based selector
+
+Set-based selector lọc object dựa trên tập giá trị.
+
+Các toán tử:
+
+```txt
+in
+notin
+exists
+DoesNotExist / !
+```
+
+Ví dụ:
+
+```bash
+kubectl get pods -l "environment in (production,qa)"
+```
+
+Lấy Pod có `environment` là `production` hoặc `qa`.
+
+Ví dụ:
+
+```bash
+kubectl get pods -l "tier notin (frontend,backend)"
+```
+
+Lấy Pod có `tier` không thuộc `frontend/backend`, hoặc không có label `tier`.
+
+Ví dụ kiểm tra tồn tại key:
+
+```bash
+kubectl get pods -l partition
+```
+
+Lấy Pod có label key `partition`, không quan tâm value.
+
+Ví dụ kiểm tra không tồn tại key:
+
+```bash
+kubectl get pods -l "!partition"
+```
+
+Lấy Pod không có label key `partition`.
+
+Câu nhớ:
+
+```txt
+Set-based selector dùng in, notin, exists để lọc label linh hoạt hơn.
+```
+
+---
+
+## 14. Selector có OR không?
+
+Kubernetes label selector **không có logical OR trực tiếp giữa nhiều condition**.
+
+Dấu phẩy trong selector nghĩa là:
+
+```txt
+AND
+```
+
+Ví dụ:
+
+```bash
+kubectl get pods -l app=web,environment=prod
+```
+
+Nghĩa là Pod phải có cả:
+
+```txt
+app=web
+AND
+environment=prod
+```
+
+Tuy nhiên, set-based selector có thể OR trên value của cùng một key:
+
+```bash
+kubectl get pods -l "environment in (production,qa)"
+```
+
+Nghĩa là:
+
+```txt
+environment = production OR qa
+```
+
+Câu nhớ:
+
+```txt
+Comma = AND. Không có OR trực tiếp giữa nhiều label key.
+```
+
+---
+
+## 15. Service dùng selector như thế nào?
+
+Service dùng selector để chọn các Pod mà nó sẽ gửi traffic tới.
+
+Ví dụ:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-svc
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 80
+```
+
+Service này sẽ chọn các Pod có label:
+
+```yaml
+labels:
+  app: web
+```
+
+Câu nhớ:
+
+```txt
+Service selector chọn Pod backend cho Service.
+```
+
+---
+
+## 16. Deployment dùng selector như thế nào?
+
+Deployment dùng selector để biết Pod nào thuộc quyền quản lý của nó.
+
+Ví dụ:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.27
+```
+
+Quan trọng:
+
+```txt
+spec.selector.matchLabels phải khớp với template.metadata.labels.
+```
+
+Nếu không khớp, Deployment không quản lý đúng Pod hoặc manifest có thể bị reject.
+
+Câu nhớ:
+
+```txt
+Deployment selector chọn Pod do Deployment quản lý.
+```
+
+---
+
+## 17. matchLabels là gì?
+
+`matchLabels` là map key/value trong selector.
+
+Ví dụ:
+
+```yaml
+selector:
+  matchLabels:
+    app: web
+    tier: frontend
+```
+
+Nghĩa là object phải có cả 2 label:
+
+```txt
+app=web
+tier=frontend
+```
+
+`matchLabels` tương đương với equality-based selector.
+
+Câu nhớ:
+
+```txt
+matchLabels = selector dạng key/value equality.
+```
+
+---
+
+## 18. matchExpressions là gì?
+
+`matchExpressions` là selector dạng biểu thức, hỗ trợ các operator:
+
+```txt
+In
+NotIn
+Exists
+DoesNotExist
+```
+
+Ví dụ:
+
+```yaml
+selector:
+  matchLabels:
+    component: redis
+  matchExpressions:
+    - key: tier
+      operator: In
+      values:
+        - cache
+    - key: environment
+      operator: NotIn
+      values:
+        - dev
+```
+
+Ý nghĩa:
+
+```txt
+component=redis
+AND tier in (cache)
+AND environment notin (dev)
+```
+
+Tất cả điều kiện trong `matchLabels` và `matchExpressions` đều phải thỏa mãn.
+
+Câu nhớ:
+
+```txt
+matchExpressions = selector dạng điều kiện nâng cao.
+```
+
+---
+
+## 19. Selector overlap là gì?
+
+Một số controller như ReplicaSet cần selector không được overlap trong cùng namespace.
+
+Nếu hai ReplicaSet có selector trùng nhau hoặc overlap, Kubernetes có thể không biết Pod nào thuộc controller nào.
+
+Ví dụ nguy hiểm:
+
+```txt
+ReplicaSet A selector: app=web
+ReplicaSet B selector: app=web
+```
+
+Hai controller có thể cùng muốn quản lý cùng một nhóm Pod, gây xung đột.
+
+Câu nhớ:
+
+```txt
+Selector của các controller cùng loại không nên overlap trong cùng namespace.
+```
+
+---
+
+# kubectl với labels
+
+## 20. Lọc Pod bằng label
+
+```bash
+kubectl get pods -l app=nginx
+```
+
+Lọc nhiều điều kiện:
+
+```bash
+kubectl get pods -l app=guestbook,role=replica
+```
+
+Set-based:
+
+```bash
+kubectl get pods -l "environment in (production,qa)"
+```
+
+---
+
+## 21. Hiển thị label thành cột
+
+```bash
+kubectl get pods -L app -L tier -L role
+```
+
+Hoặc:
+
+```bash
+kubectl get pods --label-columns=app,tier,role
+```
+
+Ý nghĩa:
+
+```txt
+Hiển thị thêm các cột label app, tier, role.
+```
+
+---
+
+## 22. Thêm hoặc cập nhật label
+
+Dùng `kubectl label`.
+
+Ví dụ thêm label `tier=fe` cho các Pod có `app=nginx`:
+
+```bash
+kubectl label pods -l app=nginx tier=fe
+```
+
+Kiểm tra:
+
+```bash
+kubectl get pods -l app=nginx -L tier
+```
+
+Nếu muốn overwrite label đã tồn tại:
+
+```bash
+kubectl label pods -l app=nginx tier=frontend --overwrite
+```
+
+---
+
+## 23. Xóa label
+
+Xóa label bằng cách thêm dấu `-` sau key:
+
+```bash
+kubectl label pod my-pod tier-
+```
+
+Ý nghĩa:
+
+```txt
+Xóa label key tier khỏi pod my-pod.
+```
+
+---
+
+# Using labels effectively
+
+## 24. Dùng nhiều label tốt hơn một label
+
+Không nên chỉ dùng một label duy nhất cho mọi mục đích.
+
+Ví dụ app nhiều tier nên có nhiều chiều label:
+
+Frontend:
+
+```yaml
+labels:
+  app: guestbook
+  app.kubernetes.io/name: guestbook
+  tier: frontend
+```
+
+Redis master:
+
+```yaml
+labels:
+  app: guestbook
+  app.kubernetes.io/name: guestbook
+  tier: backend
+  role: master
+```
+
+Redis replica:
+
+```yaml
+labels:
+  app: guestbook
+  app.kubernetes.io/name: guestbook
+  tier: backend
+  role: replica
+```
+
+Nhờ đó có thể query linh hoạt:
+
+```bash
+kubectl get pods -l app=guestbook,role=replica
+```
+
+Câu nhớ:
+
+```txt
+Dùng nhiều label để phân loại object theo nhiều chiều: app, env, tier, role, release.
+```
+
+---
+
+## 25. Label convention nên dùng
+
+Nên dùng các label phổ biến:
+
+```yaml
+labels:
+  app.kubernetes.io/name: my-app
+  app.kubernetes.io/instance: my-app-prod
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: frontend
+  app.kubernetes.io/part-of: ecommerce
+  app.kubernetes.io/managed-by: kubectl
+```
+
+Trong lab đơn giản có thể dùng:
+
+```yaml
+labels:
+  app: web
+  tier: frontend
+  environment: dev
+```
+
+Câu nhớ:
+
+```txt
+app.kubernetes.io/name phù hợp hơn cho tooling/automation.
+app đơn giản thuận tiện cho lab và CLI.
+```
+
+---
+
+# 26. Câu hỏi ôn tập
+
+1. Label là gì?
+2. Label dùng để làm gì?
+3. Label có unique không?
+4. Một object có thể có nhiều label không?
+5. Label key trong cùng object có được trùng không?
+6. Label khác annotation thế nào?
+7. Label selector là gì?
+8. Equality-based selector là gì?
+9. Set-based selector là gì?
+10. Dấu phẩy trong selector có nghĩa là gì?
+11. Label selector có logical OR trực tiếp không?
+12. Service dùng selector để làm gì?
+13. Deployment dùng selector để làm gì?
+14. `matchLabels` là gì?
+15. `matchExpressions` là gì?
+16. Vì sao `selector.matchLabels` phải khớp với `template.metadata.labels` trong Deployment?
+17. Selector overlap là gì?
+18. Vì sao selector overlap có thể nguy hiểm?
+19. Lệnh lọc Pod theo label `app=web` là gì?
+20. Lệnh hiển thị label `tier` thành cột là gì?
+21. Lệnh thêm label cho Pod là gì?
+22. Lệnh overwrite label là gì?
+23. Lệnh xóa label là gì?
+24. Vì sao nên dùng nhiều label cho app nhiều tier?
+25. Labels nào thường dùng trong production?
+
+---
+
+# 27. Câu trả lời ngắn cho mentor
+
+## Label là gì?
+
+Label là cặp key/value gắn vào Kubernetes object, dùng để phân loại, tổ chức và chọn nhóm object.
+
+## Label selector là gì?
+
+Label selector là điều kiện dùng để chọn một tập object dựa trên labels. Đây là cơ chế gom nhóm cốt lõi trong Kubernetes.
+
+## Label có unique không?
+
+Không. Nhiều object có thể có cùng label. Label dùng để gom nhóm, không dùng để định danh duy nhất object.
+
+## Label khác annotation như thế nào?
+
+Label dùng để select/filter object. Annotation dùng để lưu metadata bổ sung và thường không dùng để chọn object.
+
+## Service dùng selector để làm gì?
+
+Service dùng selector để chọn các Pod backend mà nó sẽ gửi traffic tới.
+
+## Deployment dùng selector để làm gì?
+
+Deployment dùng selector để xác định những Pod thuộc quyền quản lý của nó. Trong Deployment, selector phải khớp với labels trong Pod template.
+
+## matchLabels là gì?
+
+matchLabels là selector dạng key/value, tương đương với equality-based selector.
+
+## matchExpressions là gì?
+
+matchExpressions là selector dạng điều kiện nâng cao, hỗ trợ operator như In, NotIn, Exists và DoesNotExist.
+
+## Equality-based selector là gì?
+
+Equality-based selector lọc object bằng toán tử `=`, `==`, `!=`, ví dụ `environment=production`.
+
+## Set-based selector là gì?
+
+Set-based selector lọc object bằng toán tử `in`, `notin`, tồn tại key hoặc không tồn tại key, ví dụ `environment in (production,qa)`.
+
+## Dấu phẩy trong selector nghĩa là gì?
+
+Dấu phẩy nghĩa là logical AND. Object phải thỏa mãn tất cả điều kiện.
+
+## Vì sao selector overlap nguy hiểm?
+
+Nếu hai controller có selector overlap, chúng có thể cùng quản lý một nhóm Pod, gây xung đột và làm Kubernetes khó xác định số replica đúng.
+
+## Lệnh lọc Pod theo label là gì?
+
+```bash
+kubectl get pods -l app=web
+```
+
+## Lệnh thêm label là gì?
+
+```bash
+kubectl label pod my-pod tier=frontend
+```
+
+## Lệnh xóa label là gì?
+
+```bash
+kubectl label pod my-pod tier-
+```
